@@ -2,6 +2,7 @@
 // Elasticsearch B.V. licenses this file to you under the Apache 2.0 License.
 // See the LICENSE file in the project root for more information.
 
+//go:build !integration
 // +build !integration
 
 package esutil
@@ -547,6 +548,7 @@ func TestBulkIndexer(t *testing.T) {
 	})
 
 	t.Run("Worker.writeMeta()", func(t *testing.T) {
+		v := int64(23)
 		type args struct {
 			item BulkIndexerItem
 		}
@@ -584,6 +586,47 @@ func TestBulkIndexer(t *testing.T) {
 					Index:      "test",
 				}},
 				`{"index":{"_id":"42","_index":"test"}}` + "\n",
+			},
+			{
+				"with version and no document",
+				args{BulkIndexerItem{
+					Action:  "index",
+					Index:   "test",
+					Version: &v,
+				}},
+				`{"index":{"_index":"test"}}` + "\n",
+			},
+			{
+				"with version",
+				args{BulkIndexerItem{
+					Action:     "index",
+					DocumentID: "42",
+					Index:      "test",
+					Version:    &v,
+				}},
+				`{"index":{"_id":"42","version":23,"_index":"test"}}` + "\n",
+			},
+			{
+				"with version and version_type",
+				args{BulkIndexerItem{
+					Action:      "index",
+					DocumentID:  "42",
+					Index:       "test",
+					Version:     &v,
+					VersionType: "external",
+				}},
+				`{"index":{"_id":"42","version":23,"version_type":"external","_index":"test"}}` + "\n",
+			},
+			{
+				"with doc type and routing",
+				args{BulkIndexerItem{
+					Action:       "index",
+					DocumentID:   "42",
+					DocumentType: "type",
+					Index:        "test",
+					Routing:      "route",
+				}},
+				`{"index":{"_type":"type","_id":"42","routing":"route","_index":"test"}}` + "\n",
 			},
 		}
 		for _, tt := range tests {
